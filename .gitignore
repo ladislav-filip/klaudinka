@@ -1,0 +1,22 @@
+## .NET build výstupy
+bin/
+obj/
+*.user
+*.suo
+
+## IDE
+.vs/
+.idea/
+*.swp
+
+## Test a runtime artefakty
+TestResults/
+*.log
+
+## Lokální konfigurace
+.env
+appsettings.*.local.json
+
+## OS
+.DS_Store
+Thumbs.db

@@ -4,23 +4,48 @@
 
 ---
 
-## Přehled aplikace
+## Struktura repozitáře
 
 ```
 ClaudeAgent/
+├── src/
+│   └── ClaudeAgent/            ← hlavní aplikace (.NET 8)
+├── tests/
+│   └── ClaudeAgent.Tests/      ← unit testy (xUnit)
+├── docs/                       ← architektura a API reference
+├── ClaudeAgent.sln
+└── README.md
+```
+
+## Přehled aplikace
+
+```
+src/ClaudeAgent/
 ├── ClaudeAgent.csproj
 ├── Program.cs                  ← vstupní bod, REPL smyčka
 ├── AnthropicClient.cs          ← HTTP klient pro Anthropic API
 ├── AgentLoop.cs                ← agentní smyčka (tool calling loop)
 ├── Models/
 │   ├── Message.cs              ← request/response modely
-│   └── Tool.cs                 ← definice toolů
+│   ├── ContentBlock.cs         ← bloky obsahu zpráv
+│   └── Tool.cs                 ← definice toolů a API modelů
 └── Tools/
+    ├── ITool.cs                ← rozhraní nástroje
     ├── ToolRegistry.cs         ← registr dostupných toolů
     ├── ReadFileTool.cs         ← čtení souboru
     ├── WriteFileTool.cs        ← zápis souboru
     └── ListFilesTool.cs        ← výpis souborů v adresáři
 ```
+
+### Spuštění
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+dotnet run --project src/ClaudeAgent
+dotnet test
+```
+
+Podrobnější dokumentace: [`docs/architecture.md`](docs/architecture.md), [`docs/api-reference.md`](docs/api-reference.md).
 
 ---
 
