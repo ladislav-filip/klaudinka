@@ -1,4 +1,5 @@
-﻿using ClaudeAgent.Models;
+﻿using ClaudeAgent.Configuration;
+using ClaudeAgent.Models;
 using ClaudeAgent.Tools;
 
 namespace ClaudeAgent;
@@ -8,8 +9,6 @@ namespace ClaudeAgent;
 /// </summary>
 public static class Program
 {
-    private const string Model = "claude-sonnet-4-6";
-
     private const string SystemPrompt =
         """
         Jsi AI asistent specializovaný na práci se soubory.
@@ -23,6 +22,7 @@ public static class Program
 
     public static async Task<int> Main(string[] args)
     {
+        // API klíč je secret — výhradně z proměnné prostředí, nikdy z konfiguračního souboru.
         var apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
         if (string.IsNullOrWhiteSpace(apiKey))
         {
@@ -30,8 +30,11 @@ public static class Program
             return 1;
         }
 
-        var workspaceRoot = ResolveWorkspaceRoot();
-        var maxIterations = ResolveMaxIterations();
+        var settings = AgentConfiguration.Load(AppContext.BaseDirectory, Environment.GetEnvironmentVariable);
+
+        var workspaceRoot = ResolveWorkspaceRoot(settings.Workspace);
+        var maxIterations = NormalizePositive(settings.MaxToolIterations, AgentLoop.DefaultMaxToolIterations, nameof(settings.MaxToolIterations));
+        var maxTokens = NormalizePositive(settings.MaxTokens, AgentLoop.DefaultMaxTokens, nameof(settings.MaxTokens));
 
         var registry = new ToolRegistry([
             new ReadFileTool(workspaceRoot),
@@ -40,10 +43,11 @@ public static class Program
         ]);
 
         Console.WriteLine($"Pracovní adresář (workspace): {workspaceRoot}");
-        Console.WriteLine($"Max iterací nástrojů: {maxIterations}");
+        Console.WriteLine($"Model: {settings.Model}");
+        Console.WriteLine($"Max tokenů: {maxTokens} · max iterací nástrojů: {maxIterations}");
 
         using var client = new AnthropicClient(apiKey);
-        var agent = new AgentLoop(client, registry, SystemPrompt, Model, maxIterations);
+        var agent = new AgentLoop(client, registry, SystemPrompt, settings.Model, maxIterations, maxTokens);
 
         agent.ToolCallStarted += (_, e) =>
             Console.WriteLine($"\n🔧 Volám tool: {e.ToolName} {e.InputJson}");
@@ -53,7 +57,7 @@ public static class Program
 
         var conversation = new List<Message>();
 
-        PrintWelcome(registry);
+        PrintWelcome(registry, settings.Model);
 
         while (true)
         {
@@ -103,12 +107,10 @@ public static class Program
     }
 
     /// <summary>
-    /// Zjistí workspace root — výchozí je aktuální adresář, lze přepsat
-    /// proměnnou prostředí CLAUDE_AGENT_WORKSPACE.
+    /// Zjistí workspace root z konfigurace — prázdná hodnota znamená aktuální adresář.
     /// </summary>
-    private static string ResolveWorkspaceRoot()
+    private static string ResolveWorkspaceRoot(string? configured)
     {
-        var configured = Environment.GetEnvironmentVariable("CLAUDE_AGENT_WORKSPACE");
         var root = string.IsNullOrWhiteSpace(configured)
             ? Directory.GetCurrentDirectory()
             : configured;
@@ -117,26 +119,25 @@ public static class Program
     }
 
     /// <summary>
-    /// Zjistí maximální počet iterací nástrojů — výchozí je
-    /// <see cref="AgentLoop.DefaultMaxToolIterations"/>, lze přepsat kladnou hodnotou
-    /// v proměnné prostředí CLAUDE_AGENT_MAX_ITERATIONS.
+    /// Ošetří nekladné hodnoty z konfigurace — vrátí výchozí a upozorní uživatele,
+    /// aby aplikace nespadla na validaci v <see cref="AgentLoop"/>.
     /// </summary>
-    private static int ResolveMaxIterations()
+    private static int NormalizePositive(int value, int fallback, string name)
     {
-        var configured = Environment.GetEnvironmentVariable("CLAUDE_AGENT_MAX_ITERATIONS");
-        if (int.TryParse(configured, out var value) && value > 0)
+        if (value > 0)
         {
             return value;
         }
 
-        return AgentLoop.DefaultMaxToolIterations;
+        Console.Error.WriteLine($"Varování: neplatná hodnota konfigurace '{name}' ({value}), použije se výchozí {fallback}.");
+        return fallback;
     }
 
-    private static void PrintWelcome(ToolRegistry registry)
+    private static void PrintWelcome(ToolRegistry registry, string model)
     {
         Console.WriteLine("╔══════════════════════════════════════╗");
         Console.WriteLine("║        ClaudeAgent CLI v0.1          ║");
-        Console.WriteLine($"║  Model: {Model,-28} ║");
+        Console.WriteLine($"║  Model: {model,-28} ║");
         Console.WriteLine("╚══════════════════════════════════════╝");
         Console.WriteLine();
         Console.WriteLine($"Dostupné tooly: {string.Join(", ", registry.ToolNames)}");

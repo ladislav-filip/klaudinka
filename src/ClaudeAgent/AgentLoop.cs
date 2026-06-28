@@ -28,6 +28,12 @@ public sealed class ToolCompletedEventArgs : EventArgs
 /// </summary>
 public sealed class AgentLoop
 {
+    /// <summary>Výchozí model Anthropic API.</summary>
+    public const string DefaultModel = "claude-sonnet-4-6";
+
+    /// <summary>Výchozí maximální počet tokenů v odpovědi.</summary>
+    public const int DefaultMaxTokens = 8096;
+
     /// <summary>Výchozí maximální počet kol volání nástrojů v jednom uživatelském požadavku.</summary>
     public const int DefaultMaxToolIterations = 25;
 
@@ -36,21 +42,25 @@ public sealed class AgentLoop
     private readonly string _systemPrompt;
     private readonly string _model;
     private readonly int _maxToolIterations;
+    private readonly int _maxTokens;
 
     public AgentLoop(
         AnthropicClient client,
         ToolRegistry toolRegistry,
         string systemPrompt,
-        string model = "claude-sonnet-4-6",
-        int maxToolIterations = DefaultMaxToolIterations)
+        string model = DefaultModel,
+        int maxToolIterations = DefaultMaxToolIterations,
+        int maxTokens = DefaultMaxTokens)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxToolIterations);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxTokens);
 
         _client = client;
         _toolRegistry = toolRegistry;
         _systemPrompt = systemPrompt;
         _model = model;
         _maxToolIterations = maxToolIterations;
+        _maxTokens = maxTokens;
     }
 
     /// <summary>Vyvoláno před spuštěním nástroje.</summary>
@@ -77,7 +87,7 @@ public sealed class AgentLoop
             var request = new ApiRequest
             {
                 Model = _model,
-                MaxTokens = 8096,
+                MaxTokens = _maxTokens,
                 System = _systemPrompt,
                 Messages = conversation,
                 Tools = _toolRegistry.GetToolDefinitions()

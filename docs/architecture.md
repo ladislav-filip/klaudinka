@@ -1,6 +1,6 @@
 # ClaudeAgent — Dokumentace
 
-Konzolová aplikace v .NET 8 demonstrující agentní smyčku s Claude (Anthropic API).
+Konzolová aplikace v .NET 10 demonstrující agentní smyčku s Claude (Anthropic API).
 
 ## Struktura repozitáře
 
@@ -64,7 +64,7 @@ Implementuje smyčku tool calling:
 
 ### Požadavky
 
-- .NET 8 SDK nebo novější
+- .NET 10 SDK nebo novější
 - Environment proměnná `ANTHROPIC_API_KEY`
 
 ### Build a run
@@ -82,11 +82,15 @@ dotnet test
 
 ## Konfigurace
 
+Konfigurace se skládá z `appsettings.json`, lokálního override a proměnných prostředí (přes `Microsoft.Extensions.Configuration`). Podrobnosti viz [`docs/configuration.md`](configuration.md).
+
 | Parametr | Zdroj | Výchozí hodnota |
 |----------|-------|-----------------|
-| API klíč | `ANTHROPIC_API_KEY` | — (povinné) |
-| Model | hardcoded | `claude-sonnet-4-6` |
-| max_tokens | hardcoded | `8096` |
+| API klíč | `ANTHROPIC_API_KEY` (jen env, secret) | — (povinné) |
+| Model | `appsettings.json` / env | `claude-sonnet-4-6` |
+| max_tokens | `appsettings.json` / env | `8096` |
+| max iterací nástrojů | `appsettings.json` / env | `25` |
+| workspace | `appsettings.json` / env | aktuální adresář |
 
 ## REPL příkazy
 
@@ -99,4 +103,4 @@ dotnet test
 
 ## Rozšíření (backlog)
 
-Viz tabulku v `README.md` — plánované featury zahrnují `execute_command`, konfiguraci přes `appsettings.json`, logování a streaming.
+Viz tabulku v `README.md` — plánované featury zahrnují `execute_command`, logování a streaming. Konfigurace přes `appsettings.json` je již hotová (viz [`docs/configuration.md`](configuration.md)).

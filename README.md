@@ -9,10 +9,10 @@
 ```
 ClaudeAgent/
 ├── src/
-│   └── ClaudeAgent/            ← hlavní aplikace (.NET 8)
+│   └── ClaudeAgent/            ← hlavní aplikace (.NET 10)
 ├── tests/
 │   └── ClaudeAgent.Tests/      ← unit testy (xUnit)
-├── docs/                       ← architektura a API reference
+├── docs/                       ← architektura, API reference a konfigurace
 ├── ClaudeAgent.sln
 └── README.md
 ```
@@ -22,9 +22,13 @@ ClaudeAgent/
 ```
 src/ClaudeAgent/
 ├── ClaudeAgent.csproj
+├── appsettings.json            ← konfigurace (bez secretů)
 ├── Program.cs                  ← vstupní bod, REPL smyčka
 ├── AnthropicClient.cs          ← HTTP klient pro Anthropic API
 ├── AgentLoop.cs                ← agentní smyčka (tool calling loop)
+├── Configuration/
+│   ├── AgentSettings.cs        ← POCO konfigurace
+│   └── AgentConfiguration.cs   ← načítání konfigurace (json + env)
 ├── Models/
 │   ├── Message.cs              ← request/response modely
 │   ├── ContentBlock.cs         ← bloky obsahu zpráv
@@ -45,7 +49,7 @@ dotnet run --project src/ClaudeAgent
 dotnet test
 ```
 
-Podrobnější dokumentace: [`docs/architecture.md`](docs/architecture.md), [`docs/api-reference.md`](docs/api-reference.md).
+Podrobnější dokumentace: [`docs/architecture.md`](docs/architecture.md), [`docs/api-reference.md`](docs/api-reference.md), [`docs/configuration.md`](docs/configuration.md).
 
 ---
 
@@ -185,17 +189,28 @@ Pracovní adresář je aktuální adresář odkud je aplikace spuštěna.
 
 ## Konfigurace
 
-API klíč načítat z environment proměnné `ANTHROPIC_API_KEY`.
-Pokud není nastavena, aplikace vypíše chybu a skončí.
+Konfigurace se skládá z `appsettings.json`, volitelného lokálního override
+`appsettings.local.json` a proměnných prostředí (přes `Microsoft.Extensions.Configuration`).
+Kompletní popis vrstev, priorit a parametrů: [`docs/configuration.md`](docs/configuration.md).
 
-Model: `claude-sonnet-4-6` (hardcoded, zatím bez konfigurace)
+| Parametr | appsettings klíč | Výchozí |
+|----------|------------------|---------|
+| Model | `ClaudeAgent:Model` | `claude-sonnet-4-6` |
+| Max. tokenů | `ClaudeAgent:MaxTokens` | `8096` |
+| Max. iterací nástrojů | `ClaudeAgent:MaxToolIterations` | `25` |
+| Workspace | `ClaudeAgent:Workspace` | aktuální adresář |
+
+> **Bezpečnost:** API klíč je secret a načítá se **výhradně** z proměnné prostředí
+> `ANTHROPIC_API_KEY` — nikdy z konfiguračního souboru. Pokud není nastaven,
+> aplikace vypíše chybu a skončí.
 
 ---
 
 ## Technické požadavky
 
-- **.NET 8** nebo novější
-- **Žádné externí NuGet balíčky** — pouze `System.Text.Json` (součást .NET)
+- **.NET 10** nebo novější
+- Minimum externích závislostí — jádro (Anthropic API) běží přes `System.Text.Json` bez SDK;
+  konfigurace používá `Microsoft.Extensions.Configuration.*`
 - `<Nullable>enable</Nullable>`, `<ImplicitUsings>enable</ImplicitUsings>`
 - Async/await všude kde je I/O
 
@@ -222,7 +237,7 @@ Poslední scénář demonstruje vícekolovou agentní smyčku — Claude zavolá
 | Priorita | Feature |
 |----------|---------|
 | P1 | `execute_command` tool — spuštění shell příkazu |
-| P1 | Konfigurace přes `appsettings.json` |
+| ✅ hotovo | ~~Konfigurace přes `appsettings.json`~~ — viz [`docs/configuration.md`](docs/configuration.md) |
 | P2 | Logování tool calls do souboru |
 | P2 | `search_files` tool — grep přes soubory |
 | P3 | Streaming odpovědí (Server-Sent Events) |
