@@ -20,7 +20,8 @@ public class AgentLoopTests
 
     using var httpClient = new HttpClient(handler);
     using var client = new AnthropicClient("test-api-key", httpClient);
-    var registry = new ToolRegistry([new ReadFileTool(), new WriteFileTool(), new ListFilesTool()]);
+    var root = Directory.GetCurrentDirectory();
+    var registry = new ToolRegistry([new ReadFileTool(root), new WriteFileTool(root), new ListFilesTool(root)]);
     var loop = new AgentLoop(client, registry, SystemPrompt);
 
     var conversation = new List<Message>();
@@ -40,7 +41,8 @@ public class AgentLoopTests
 
     using var httpClient = new HttpClient(handler);
     using var client = new AnthropicClient("test-api-key", httpClient);
-    var registry = new ToolRegistry([new ReadFileTool(), new WriteFileTool(), new ListFilesTool()]);
+    var root = Directory.GetCurrentDirectory();
+    var registry = new ToolRegistry([new ReadFileTool(root), new WriteFileTool(root), new ListFilesTool(root)]);
     var loop = new AgentLoop(client, registry, SystemPrompt);
 
     var toolCalls = new List<string>();

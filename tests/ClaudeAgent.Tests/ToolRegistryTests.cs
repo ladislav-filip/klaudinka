@@ -39,9 +39,13 @@ public class ToolRegistryTests
         Assert.Null(registry.GetTool("neexistuje"));
     }
 
-    private static ToolRegistry CreateRegistry() => new([
-        new ReadFileTool(),
-        new WriteFileTool(),
-        new ListFilesTool()
-    ]);
+    private static ToolRegistry CreateRegistry()
+    {
+        var root = Directory.GetCurrentDirectory();
+        return new([
+            new ReadFileTool(root),
+            new WriteFileTool(root),
+            new ListFilesTool(root)
+        ]);
+    }
 }

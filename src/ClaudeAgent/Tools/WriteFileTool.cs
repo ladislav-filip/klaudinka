@@ -9,6 +9,14 @@ namespace ClaudeAgent.Tools;
 /// </summary>
 public sealed class WriteFileTool : ITool
 {
+  private readonly string _workspaceRoot;
+
+  /// <param name="workspaceRoot">Kořen, mimo který nesmí tool zapisovat (sandbox).</param>
+  public WriteFileTool(string workspaceRoot)
+  {
+    _workspaceRoot = WorkspaceGuard.NormalizeRoot(workspaceRoot);
+  }
+
   public string Name => "write_file";
 
   public string Description =>
@@ -55,7 +63,11 @@ public sealed class WriteFileTool : ITool
 
     try
     {
-      var fullPath = Path.GetFullPath(path);
+      if (!WorkspaceGuard.TryResolve(_workspaceRoot, path, out var fullPath, out var error))
+      {
+        return error;
+      }
+
       var directory = Path.GetDirectoryName(fullPath);
 
       if (!string.IsNullOrEmpty(directory))

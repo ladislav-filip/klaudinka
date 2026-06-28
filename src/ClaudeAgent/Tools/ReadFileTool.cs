@@ -11,6 +11,14 @@ public sealed class ReadFileTool : ITool
 {
   private const int MaxFileSizeBytes = 100 * 1024;
 
+  private readonly string _workspaceRoot;
+
+  /// <param name="workspaceRoot">Kořen, mimo který nesmí tool číst (sandbox).</param>
+  public ReadFileTool(string workspaceRoot)
+  {
+    _workspaceRoot = WorkspaceGuard.NormalizeRoot(workspaceRoot);
+  }
+
   public string Name => "read_file";
 
   public string Description =>
@@ -45,7 +53,10 @@ public sealed class ReadFileTool : ITool
 
     try
     {
-      var fullPath = Path.GetFullPath(path);
+      if (!WorkspaceGuard.TryResolve(_workspaceRoot, path, out var fullPath, out var error))
+      {
+        return error;
+      }
 
       if (!File.Exists(fullPath))
       {

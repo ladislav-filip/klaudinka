@@ -21,7 +21,7 @@ public class ListFilesToolTests : IDisposable
     [Fact]
     public async Task ExecuteAsync_VratiJsonSeznamSouboru()
     {
-        var tool = new ListFilesTool();
+        var tool = new ListFilesTool(_tempDir);
         var input = JsonDocument.Parse($"{{\"path\": \"{_tempDir.Replace("\\", "\\\\")}\"}}").RootElement;
 
         var result = await tool.ExecuteAsync(input);
@@ -36,7 +36,7 @@ public class ListFilesToolTests : IDisposable
     [Fact]
     public async Task ExecuteAsync_FiltrujePodlePatternu()
     {
-        var tool = new ListFilesTool();
+        var tool = new ListFilesTool(_tempDir);
         var input = JsonDocument.Parse(
             $"{{\"path\": \"{_tempDir.Replace("\\", "\\\\")}\", \"pattern\": \"*.cs\"}}").RootElement;
 
@@ -52,7 +52,7 @@ public class ListFilesToolTests : IDisposable
     [Fact]
     public async Task ExecuteAsync_VratiChybuProNeexistujiciAdresar()
     {
-        var tool = new ListFilesTool();
+        var tool = new ListFilesTool(_tempDir);
         var input = JsonDocument.Parse("{\"path\": \"neexistujici-adresar\"}").RootElement;
 
         var result = await tool.ExecuteAsync(input);

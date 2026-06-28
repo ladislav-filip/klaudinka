@@ -9,6 +9,14 @@ namespace ClaudeAgent.Tools;
 /// </summary>
 public sealed class ListFilesTool : ITool
 {
+  private readonly string _workspaceRoot;
+
+  /// <param name="workspaceRoot">Kořen, mimo který nesmí tool vypisovat (sandbox).</param>
+  public ListFilesTool(string workspaceRoot)
+  {
+    _workspaceRoot = WorkspaceGuard.NormalizeRoot(workspaceRoot);
+  }
+
   public string Name => "list_files";
 
   public string Description =>
@@ -54,7 +62,10 @@ public sealed class ListFilesTool : ITool
 
     try
     {
-      var fullPath = Path.GetFullPath(path);
+      if (!WorkspaceGuard.TryResolve(_workspaceRoot, path, out var fullPath, out var error))
+      {
+        return Task.FromResult(error);
+      }
 
       if (!Directory.Exists(fullPath))
       {
@@ -69,7 +80,7 @@ public sealed class ListFilesTool : ITool
             return new FileEntry
             {
               Name = info.Name,
-              Path = Path.GetRelativePath(Directory.GetCurrentDirectory(), info.FullName),
+              Path = Path.GetRelativePath(_workspaceRoot, info.FullName),
               SizeBytes = info.Length,
               LastModified = info.LastWriteTimeUtc
             };

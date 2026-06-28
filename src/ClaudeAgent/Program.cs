@@ -16,7 +16,9 @@ public static class Program
         Máš přístup k nástrojům pro čtení, zápis a výpis souborů.
         Vždy potvrď akci kterou jsi provedl.
         Pokud soubor neexistuje nebo nastane chyba, informuj uživatele.
-        Pracovní adresář je aktuální adresář odkud je aplikace spuštěna.
+        Přístup k souborům je omezen na pracovní adresář (workspace); cesty mimo
+        něj jsou z bezpečnostních důvodů odmítnuty. Workspace je adresář, odkud je
+        aplikace spuštěna (lze přepsat proměnnou prostředí CLAUDE_AGENT_WORKSPACE).
         """;
 
     public static async Task<int> Main(string[] args)
@@ -28,11 +30,15 @@ public static class Program
             return 1;
         }
 
+        var workspaceRoot = ResolveWorkspaceRoot();
+
         var registry = new ToolRegistry([
-            new ReadFileTool(),
-            new WriteFileTool(),
-            new ListFilesTool()
+            new ReadFileTool(workspaceRoot),
+            new WriteFileTool(workspaceRoot),
+            new ListFilesTool(workspaceRoot)
         ]);
+
+        Console.WriteLine($"Pracovní adresář (workspace): {workspaceRoot}");
 
         using var client = new AnthropicClient(apiKey);
         var agent = new AgentLoop(client, registry, SystemPrompt, Model);
@@ -92,6 +98,20 @@ public static class Program
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// Zjistí workspace root — výchozí je aktuální adresář, lze přepsat
+    /// proměnnou prostředí CLAUDE_AGENT_WORKSPACE.
+    /// </summary>
+    private static string ResolveWorkspaceRoot()
+    {
+        var configured = Environment.GetEnvironmentVariable("CLAUDE_AGENT_WORKSPACE");
+        var root = string.IsNullOrWhiteSpace(configured)
+            ? Directory.GetCurrentDirectory()
+            : configured;
+
+        return WorkspaceGuard.NormalizeRoot(root);
     }
 
     private static void PrintWelcome(ToolRegistry registry)

@@ -20,7 +20,7 @@ public class WriteFileToolTests : IDisposable
     public async Task ExecuteAsync_ZapiseSoubor()
     {
         var filePath = Path.Combine(_tempDir, "output.txt");
-        var tool = new WriteFileTool();
+        var tool = new WriteFileTool(_tempDir);
         var input = JsonDocument.Parse(
             $"{{\"path\": \"{filePath.Replace("\\", "\\\\")}\", \"content\": \"Test obsah\"}}").RootElement;
 
@@ -34,7 +34,7 @@ public class WriteFileToolTests : IDisposable
     public async Task ExecuteAsync_VytvoriNadrazenyAdresar()
     {
         var filePath = Path.Combine(_tempDir, "subdir", "nested.txt");
-        var tool = new WriteFileTool();
+        var tool = new WriteFileTool(_tempDir);
         var input = JsonDocument.Parse(
             $"{{\"path\": \"{filePath.Replace("\\", "\\\\")}\", \"content\": \"Nested\"}}").RootElement;
 

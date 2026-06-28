@@ -22,7 +22,7 @@ public class ReadFileToolTests : IDisposable
         var filePath = Path.Combine(_tempDir, "test.txt");
         await File.WriteAllTextAsync(filePath, "Ahoj světe!");
 
-        var tool = new ReadFileTool();
+        var tool = new ReadFileTool(_tempDir);
         var input = JsonDocument.Parse($"{{\"path\": \"{filePath.Replace("\\", "\\\\")}\"}}").RootElement;
 
         var result = await tool.ExecuteAsync(input);
@@ -33,7 +33,7 @@ public class ReadFileToolTests : IDisposable
     [Fact]
     public async Task ExecuteAsync_VratiChybuProNeexistujiciSoubor()
     {
-        var tool = new ReadFileTool();
+        var tool = new ReadFileTool(_tempDir);
         var input = JsonDocument.Parse("{\"path\": \"neexistuje.txt\"}").RootElement;
 
         var result = await tool.ExecuteAsync(input);
@@ -44,7 +44,7 @@ public class ReadFileToolTests : IDisposable
     [Fact]
     public async Task ExecuteAsync_VratiChybuPriChybejicimPath()
     {
-        var tool = new ReadFileTool();
+        var tool = new ReadFileTool(_tempDir);
         var input = JsonDocument.Parse("{}").RootElement;
 
         var result = await tool.ExecuteAsync(input);
