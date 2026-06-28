@@ -73,4 +73,19 @@ internal static class ApiResponseFactory
         stop_reason = "tool_use",
         usage = new { input_tokens = 10, output_tokens = 20 }
     });
+
+    /// <summary>
+    /// Odpověď se stop_reason "tool_use", ale bez jediného tool_use bloku — simuluje
+    /// nekonzistentní stav, který by jinak vedl k zacyklení smyčky.
+    /// </summary>
+    public static string ToolUseNoBlocks() => JsonSerializer.Serialize(new
+    {
+        id = "msg_test",
+        type = "message",
+        role = "assistant",
+        content = Array.Empty<object>(),
+        model = "claude-sonnet-4-6",
+        stop_reason = "tool_use",
+        usage = new { input_tokens = 10, output_tokens = 20 }
+    });
 }

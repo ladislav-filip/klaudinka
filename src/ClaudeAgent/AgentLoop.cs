@@ -28,21 +28,29 @@ public sealed class ToolCompletedEventArgs : EventArgs
 /// </summary>
 public sealed class AgentLoop
 {
+    /// <summary>Výchozí maximální počet kol volání nástrojů v jednom uživatelském požadavku.</summary>
+    public const int DefaultMaxToolIterations = 25;
+
     private readonly AnthropicClient _client;
     private readonly ToolRegistry _toolRegistry;
     private readonly string _systemPrompt;
     private readonly string _model;
+    private readonly int _maxToolIterations;
 
     public AgentLoop(
         AnthropicClient client,
         ToolRegistry toolRegistry,
         string systemPrompt,
-        string model = "claude-sonnet-4-6")
+        string model = "claude-sonnet-4-6",
+        int maxToolIterations = DefaultMaxToolIterations)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxToolIterations);
+
         _client = client;
         _toolRegistry = toolRegistry;
         _systemPrompt = systemPrompt;
         _model = model;
+        _maxToolIterations = maxToolIterations;
     }
 
     /// <summary>Vyvoláno před spuštěním nástroje.</summary>
@@ -61,6 +69,8 @@ public sealed class AgentLoop
         CancellationToken cancellationToken = default)
     {
         conversation.Add(Message.UserText(userInput));
+
+        var toolIterations = 0;
 
         while (true)
         {
@@ -84,8 +94,29 @@ public sealed class AgentLoop
 
             if (response.StopReason == "tool_use")
             {
-                var toolResults = await ExecuteToolUsesAsync(response.Content, cancellationToken);
+                var toolUseBlocks = response.Content.Where(b => b.Type == "tool_use").ToList();
+
+                // tool_use stop_reason bez jediného tool_use bloku — bez explicitního
+                // ošetření bychom odeslali prázdný tool_result a smyčka by se zacyklila.
+                if (toolUseBlocks.Count == 0)
+                {
+                    var partialText = ExtractTextResponse(response.Content);
+                    return string.IsNullOrWhiteSpace(partialText)
+                        ? "Chyba: model signalizoval tool_use, ale neposlal žádný tool_use blok."
+                        : partialText;
+                }
+
+                var toolResults = await ExecuteToolUsesAsync(toolUseBlocks, cancellationToken);
                 conversation.Add(Message.UserToolResults(toolResults));
+
+                // Limit kontrolujeme až po přidání tool_results, aby konverzace skončila
+                // ve validním stavu (user tool_results) a šla případně dál pokračovat.
+                if (++toolIterations >= _maxToolIterations)
+                {
+                    return $"Chyba: dosažen limit {_maxToolIterations} iterací nástrojů. " +
+                           "Agentní smyčka byla zastavena, aby se předešlo nekonečnému cyklu.";
+                }
+
                 continue;
             }
 
@@ -98,12 +129,12 @@ public sealed class AgentLoop
     }
 
     private async Task<List<ContentBlock>> ExecuteToolUsesAsync(
-        List<ContentBlock> assistantContent,
+        List<ContentBlock> toolUseBlocks,
         CancellationToken cancellationToken)
     {
         var results = new List<ContentBlock>();
 
-        foreach (var block in assistantContent.Where(b => b.Type == "tool_use"))
+        foreach (var block in toolUseBlocks)
         {
             cancellationToken.ThrowIfCancellationRequested();
 

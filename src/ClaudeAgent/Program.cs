@@ -31,6 +31,7 @@ public static class Program
         }
 
         var workspaceRoot = ResolveWorkspaceRoot();
+        var maxIterations = ResolveMaxIterations();
 
         var registry = new ToolRegistry([
             new ReadFileTool(workspaceRoot),
@@ -39,9 +40,10 @@ public static class Program
         ]);
 
         Console.WriteLine($"Pracovní adresář (workspace): {workspaceRoot}");
+        Console.WriteLine($"Max iterací nástrojů: {maxIterations}");
 
         using var client = new AnthropicClient(apiKey);
-        var agent = new AgentLoop(client, registry, SystemPrompt, Model);
+        var agent = new AgentLoop(client, registry, SystemPrompt, Model, maxIterations);
 
         agent.ToolCallStarted += (_, e) =>
             Console.WriteLine($"\n🔧 Volám tool: {e.ToolName} {e.InputJson}");
@@ -112,6 +114,22 @@ public static class Program
             : configured;
 
         return WorkspaceGuard.NormalizeRoot(root);
+    }
+
+    /// <summary>
+    /// Zjistí maximální počet iterací nástrojů — výchozí je
+    /// <see cref="AgentLoop.DefaultMaxToolIterations"/>, lze přepsat kladnou hodnotou
+    /// v proměnné prostředí CLAUDE_AGENT_MAX_ITERATIONS.
+    /// </summary>
+    private static int ResolveMaxIterations()
+    {
+        var configured = Environment.GetEnvironmentVariable("CLAUDE_AGENT_MAX_ITERATIONS");
+        if (int.TryParse(configured, out var value) && value > 0)
+        {
+            return value;
+        }
+
+        return AgentLoop.DefaultMaxToolIterations;
     }
 
     private static void PrintWelcome(ToolRegistry registry)

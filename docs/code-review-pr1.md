@@ -41,13 +41,22 @@
 
 ---
 
-### I1 — Important: Agentní smyčka bez limitu iterací
+### I1 — Important: Agentní smyčka bez limitu iterací — ✅ VYŘEŠENO
 
 **Soubor:** `src/ClaudeAgent/AgentLoop.cs:65-89`, `106-142`
 
 **Problém:** `while (true)` nemá `maxToolIterations` / budget guard. Při `tool_use` bez `tool_use` bloků se odešle prázdný `tool_result` a smyčka pokračuje.
 
 **Doporučení:** přidat limit iterací, explicitní chybu pro `tool_use` bez bloků, testy na nekonečný loop.
+
+> [!NOTE]
+> **Stav opravy:** vyřešeno na větvi `cursor/claude-agent-cli-bbd4`.
+>
+> - `AgentLoop` má nový konstruktor parametr `maxToolIterations` (default `AgentLoop.DefaultMaxToolIterations = 25`) s validací `ArgumentOutOfRangeException` pro nekladné hodnoty. Smyčka počítá dokončená kola nástrojů a po dosažení limitu vrací graceful zprávu `Chyba: dosažen limit … iterací nástrojů.`. Limit se kontroluje až po přidání `tool_result`, takže konverzace zůstane v konzistentním stavu.
+> - `tool_use` bez jediného `tool_use` bloku se nyní ošetřuje explicitně: smyčka nepokračuje prázdným `tool_result`, ale vrací dostupný text, případně `Chyba: model signalizoval tool_use, ale neposlal žádný tool_use blok.`.
+> - `ExecuteToolUsesAsync` nově přijímá už filtrovaný seznam `tool_use` bloků (odstraněna dvojí filtrace).
+> - `Program.cs` čte limit z proměnné prostředí `CLAUDE_AGENT_MAX_ITERATIONS` (kladné celé číslo, jinak default) — stejný pattern jako `CLAUDE_AGENT_WORKSPACE` — a vypisuje jej při startu.
+> - Testy: nové `ProcessUserInputAsync_ZastaviPriPrekroceniLimitu` (ověří zastavení po N kolech) a `ProcessUserInputAsync_VratiChybuPriToolUseBezBloku` (žádné zacyklení) + helper `ApiResponseFactory.ToolUseNoBlocks()`. `dotnet test` → 33/33 ✅.
 
 ---
 
@@ -98,7 +107,7 @@
 ## Doporučení před mergem
 
 1. ✅ ~~Sandboxing cest pro všechny file tooly (priorita #1)~~ — **hotovo (C1)**
-2. ⬜ Limit agentní smyčky + testy na repeated/nekonečný `tool_use`
+2. ✅ ~~Limit agentní smyčky + testy na repeated/nekonečný `tool_use`~~ — **hotovo (I1)**
 3. ⬜ Unit testy `AnthropicClient` — URL, method, headers, body
 4. ⬜ Zpřísnit text-only detekci v `read_file`
 5. 🟡 Rozšířit testy o: ~~path traversal~~ (✅ hotovo), soubor >100 KB, invalid UTF-8, multiple `tool_use` bloky, neznámý tool, chybějící `tool_use.id`
@@ -109,7 +118,7 @@
 
 **Ready to merge: With fixes**
 
-Před mergem je nutné opravit minimálně **C1 (filesystem sandboxing)** a **I1 (limit agentní smyčky)**.
+Před mergem bylo nutné opravit minimálně **C1 (filesystem sandboxing)** a **I1 (limit agentní smyčky)**.
 
 > [!IMPORTANT]
-> **Aktualizace:** C1 je vyřešeno (viz stav u nálezu). Zbývá **I1 (limit agentní smyčky)** jako poslední blokující bod před mergem.
+> **Aktualizace:** C1 i I1 jsou vyřešeny (viz stav u jednotlivých nálezů). Oba blokující body před mergem jsou tím vyřešeny; zbylé nálezy (I2, I3, M1–M3) jsou nice-to-have.
