@@ -18,7 +18,7 @@
 
 ## Nálezy
 
-### C1 — Critical: Neomezený přístup k filesystemu (path traversal)
+### C1 — Critical: Neomezený přístup k filesystemu (path traversal) — ✅ VYŘEŠENO
 
 **Soubory:**
 - `src/ClaudeAgent/Tools/ReadFileTool.cs:48-66`
@@ -28,6 +28,16 @@
 **Problém:** `read_file`, `write_file` i `list_files` používají pouze `Path.GetFullPath()` bez omezení na pracovní adresář. Model může požádat o čtení/zápis mimo workspace (např. `../../.env`, `/home/user/.ssh/id_rsa`).
 
 **Doporučení:** zavést workspace root, normalizovat cílovou cestu a odmítnout vše mimo něj. Přidat testy pro `../`, absolutní cesty mimo root a symlinky.
+
+> [!NOTE]
+> **Stav opravy:** vyřešeno na větvi `cursor/claude-agent-cli-bbd4`.
+>
+> - Nová utilita `src/ClaudeAgent/Tools/WorkspaceGuard.cs` — centralizuje validaci cest: relativní cesty řeší vůči workspace root (ne vůči CWD), provádí lexikální kontrolu obsažení (porovnání s koncovým oddělovačem brání záměně `…/workspace-evil` za `…/workspace`; na Windows case-insensitive) a best-effort obranu proti symlinkům přes `ResolveLinkTarget`.
+> - Všechny tři tooly dostaly povinný `workspaceRoot` v konstruktoru a `Path.GetFullPath(path)` nahradily voláním `WorkspaceGuard.TryResolve(...)`. Při úniku vrací `Chyba: přístup mimo pracovní adresář (workspace) není povolen.`
+> - `ListFilesTool` počítá relativní cestu výstupu vůči workspace root místo `Directory.GetCurrentDirectory()`.
+> - `Program.cs` zjišťuje workspace root (výchozí CWD, přepsatelné proměnnou `CLAUDE_AGENT_WORKSPACE`), předává jej toolům a doplňuje info do SystemPromptu.
+> - Testy: nové `WorkspaceGuardTests.cs` (7) a `PathTraversalTests.cs` (6) pro `../`, absolutní cesty mimo root, prefixový trik a symlink; stávající tooltesty aktualizovány na nový konstruktor. `dotnet test` → 31/31 ✅.
+> - **Pozn. k symlinkům:** symlink test se na Windows bez Developer Mode / admin práv elegantně přeskočí (tvorba symlinku selže); naostro proběhne na Linuxu/macOS nebo na Windows s Developer Mode. Lexikální obrana je otestována vždy.
 
 ---
 
@@ -87,11 +97,11 @@
 
 ## Doporučení před mergem
 
-1. Sandboxing cest pro všechny file tooly (priorita #1)
-2. Limit agentní smyčky + testy na repeated/nekonečný `tool_use`
-3. Unit testy `AnthropicClient` — URL, method, headers, body
-4. Zpřísnit text-only detekci v `read_file`
-5. Rozšířit testy o: path traversal, soubor >100 KB, invalid UTF-8, multiple `tool_use` bloky, neznámý tool, chybějící `tool_use.id`
+1. ✅ ~~Sandboxing cest pro všechny file tooly (priorita #1)~~ — **hotovo (C1)**
+2. ⬜ Limit agentní smyčky + testy na repeated/nekonečný `tool_use`
+3. ⬜ Unit testy `AnthropicClient` — URL, method, headers, body
+4. ⬜ Zpřísnit text-only detekci v `read_file`
+5. 🟡 Rozšířit testy o: ~~path traversal~~ (✅ hotovo), soubor >100 KB, invalid UTF-8, multiple `tool_use` bloky, neznámý tool, chybějící `tool_use.id`
 
 ---
 
@@ -100,3 +110,6 @@
 **Ready to merge: With fixes**
 
 Před mergem je nutné opravit minimálně **C1 (filesystem sandboxing)** a **I1 (limit agentní smyčky)**.
+
+> [!IMPORTANT]
+> **Aktualizace:** C1 je vyřešeno (viz stav u nálezu). Zbývá **I1 (limit agentní smyčky)** jako poslední blokující bod před mergem.
