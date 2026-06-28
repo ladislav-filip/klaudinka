@@ -1,0 +1,8 @@
+{
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    "Piš commit message ve formátu Conventional Commits: type(scope): summary.",
+    "Commit message piš v češtině.",
+    "Subject řádek max 72 znaků, imperativ, bez tečky na konci.",
+    "Pokud je změna větší, přidej stručné body s důvodem změny."
+  ]
+}
